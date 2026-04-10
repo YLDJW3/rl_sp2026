@@ -20,7 +20,7 @@ from hw1_imitation.data import (
     load_pusht_zarr,
 )
 from hw1_imitation.model import build_policy, PolicyType
-from hw1_imitation.evaluation import Logger
+from hw1_imitation.evaluation import Logger, evaluate_policy
 
 LOGDIR_PREFIX = "exp"
 
@@ -118,6 +118,12 @@ def run_training(config: TrainConfig) -> None:
         hidden_dims=config.hidden_dims,
     ).to(device)
 
+    optimizer = torch.optim.Adam(
+        params=model.parameters(),
+        lr=config.lr,
+        weight_decay=config.weight_decay,
+    )
+
     exp_name = f"seed_{config.seed}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     if config.exp_name is not None:
         exp_name += f"_{config.exp_name}"
@@ -127,7 +133,29 @@ def run_training(config: TrainConfig) -> None:
     )
     logger = Logger(log_dir)
 
-    ### TODO: PUT YOUR MAIN TRAINING LOOP HERE ###
+    t = 1
+    for _ in range(config.num_epochs):
+        for state, target_action in loader:
+            # forward
+            loss = model.compute_loss(state, target_action)
+            # backward
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            # eval
+            if t % config.eval_interval == 0:
+                evaluate_policy(
+                    model=model, 
+                    normalizer=normalizer,
+                    device=device,
+                    chunk_size=config.chunk_size,
+                    video_size=config.video_size,
+                    num_video_episodes=config.num_video_episodes,
+                    flow_num_steps=config.flow_num_steps,
+                    step=t,
+                    logger=logger,
+                )
+            t += 1
 
     logger.dump_for_grading()
 
