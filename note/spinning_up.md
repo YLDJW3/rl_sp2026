@@ -107,23 +107,6 @@
         1. Embeds the planning procedure directly into a policy as a subroutine
         2. The policy can learn to choose how and when to use the plans
 
-## Papers
-[2]	A2C / A3C (Asynchronous Advantage Actor-Critic): Mnih et al, 2016
-[3]	PPO (Proximal Policy Optimization): Schulman et al, 2017
-[4]	TRPO (Trust Region Policy Optimization): Schulman et al, 2015
-[5]	DDPG (Deep Deterministic Policy Gradient): Lillicrap et al, 2015
-[6]	TD3 (Twin Delayed DDPG): Fujimoto et al, 2018
-[7]	SAC (Soft Actor-Critic): Haarnoja et al, 2018
-[8]	DQN (Deep Q-Networks): Mnih et al, 2013
-[9]	C51 (Categorical 51-Atom DQN): Bellemare et al, 2017
-[10] QR-DQN (Quantile Regression DQN): Dabney et al, 2017
-[11] HER (Hindsight Experience Replay): Andrychowicz et al, 2017
-[12] World Models: Ha and Schmidhuber, 2018
-[13] I2A (Imagination-Augmented Agents): Weber et al, 2017
-[14] MBMF (Model-Based RL with Model-Free Fine-Tuning): Nagabandi et al, 2017
-[15] MBVE (Model-Based Value Expansion): Feinberg et al, 2018
-[16] AlphaZero: Silver et al, 2017
-
 # Policy optimization
 ## Deriving the simplest policy gradient
 1. Object: maximize the expected return $J(\pi_{\theta}) = E_{\tau \sim \pi_{\theta}}[R(\tau)]$
@@ -143,3 +126,5 @@
     $\hat{g} = \frac{1}{|\mathcal{D}|} \sum_{\tau \in \mathcal{D}} \sum_{t=0}^{T} \nabla_{\theta} \log \pi_{\theta}(a_t |s_t) R(\tau)$
 
 
+# Key papers in Deep RL
+1. https://spinningup.openai.com/en/latest/spinningup/keypapers.html
