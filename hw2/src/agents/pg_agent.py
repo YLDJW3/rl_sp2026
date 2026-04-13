@@ -167,14 +167,15 @@ class PGAgent(nn.Module):
                     # recursively compute advantage estimates starting from timestep T.
                     # HINT: use terminals to handle edge cases. terminals[i] is 1 if the state is the last in its
                     # trajectory, and 0 otherwise.
-                    if terminals[i] == 1:
-                        delta_t = rewards[i] - values[i]
-                        advantages[i] = delta_t
-                    else:
-                        delta_t = rewards[i] - values[i] + values[i+1] * self.gamma
-                        advantages[i] = delta_t + self.gae_lambda * self.gamma * advantages[i + 1]
+                    delta_t = rewards[i] - values[i] + (1 - terminals[i]) * values[i+1] * self.gamma
+                    advantages[i] = delta_t + (1 - terminals[i]) * self.gae_lambda * self.gamma * advantages[i + 1]
                 # remove dummy advantage
                 advantages = advantages[:-1]
+                values = values[:-1]
+                if self.gae_lambda == 1:
+                    print(f"advantages {advantages}")
+                    print(f"q_values-valuee {q_values - values}")
+                    assert np.allclose(advantages, q_values - values, 1e-5, 1e-8)
 
         # normalize the advantages to have a mean of zero and a standard deviation of one within the batch
         if self.normalize_advantages:

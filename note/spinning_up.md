@@ -128,3 +128,10 @@
 
 # Key papers in Deep RL
 1. https://spinningup.openai.com/en/latest/spinningup/keypapers.html
+
+# Vanilla policy gradient, VPG
+1. Idea: push up the probabilities of actions that lead to higher return, and push down the probabilities of actions that lead to lower return
+2. Take the gradient with $\theta$ of $(\pi_{\theta})$, update the policy parameter with gradient descent method
+    $$\theta_{t+1} = \theta_{t} + \alpha\nabla_{\theta}J(\pi_{\theta_{t}})$$
+
+# Trust Region Policy Optimization, TRPO
