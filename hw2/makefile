@@ -35,9 +35,24 @@ reward:
 
 baseline:
 # No baseline
-	uv run src/scripts/run.py --env_name HalfCheetah-v4 -n 100 -b 5000 -eb 3000 -rtg \
+#	uv run src/scripts/run.py --env_name HalfCheetah-v4 -n 100 -b 5000 -eb 3000 -rtg \
 		--discount 0.95 -lr 0.01 --exp_name cheetah
 
 # Baseline
 #	uv run src/scripts/run.py --env_name HalfCheetah-v4 -n 100 -b 5000 -eb 3000 -rtg \
 		--discount 0.95 -lr 0.01 --use_baseline -blr 0.01 -bgs 5 --exp_name cheetah_baseline
+
+# Baseline lr=0.02
+#	uv run src/scripts/run.py --env_name HalfCheetah-v4 -n 200 -b 5000 -eb 3000 -rtg \
+		--discount 0.95 -lr 0.01 --use_baseline -blr 0.01 -bgs 5 --exp_name cheetah_baseline \
+		--seed 42
+
+# No baseline na
+	uv run src/scripts/run.py --env_name HalfCheetah-v4 -n 100 -b 5000 -eb 3000 -rtg \
+		--discount 0.95 -lr 0.01 --exp_name cheetah \
+		-na
+
+# Baseline na
+	uv run src/scripts/run.py --env_name HalfCheetah-v4 -n 100 -b 5000 -eb 3000 -rtg \
+		--discount 0.95 -lr 0.01 --use_baseline -blr 0.01 -bgs 5 --exp_name cheetah_baseline \
+		- na

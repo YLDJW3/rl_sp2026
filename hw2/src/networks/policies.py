@@ -78,7 +78,7 @@ class MLPPolicy(nn.Module):
         else:
             # define the forward pass for a policy with a continuous action space.
             mean = self.mean_net(obs)
-            std = self.logstd()
+            std = self.logstd.exp()
             return D.Normal(mean, std)
 
     def update(self, obs: np.ndarray, actions: np.ndarray, *args, **kwargs) -> dict:
@@ -104,8 +104,11 @@ class MLPPolicyPG(MLPPolicy):
         advantages: torch.Tensor = ptu.from_numpy(advantages) # (N * H, 1)
 
         # compute the policy gradient actor loss
-        dist : D.Distribution = self.forward(obs) 
-        log_prob = dist.log_prob(actions)   # (N * H, 1)
+        dist : D.Distribution = self.forward(obs)
+        log_prob = dist.log_prob(actions)   # (N * H, 1) discrete, (N * H, ac_dim) continuous 
+        if log_prob.shape[-1] > 1:
+            # for continuous action space
+            log_prob = log_prob.sum(dim=-1)
         loss = (-log_prob * advantages).mean()
         # perform an optimizer step
         self.optimizer.zero_grad()

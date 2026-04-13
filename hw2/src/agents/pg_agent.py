@@ -150,8 +150,8 @@ class PGAgent(nn.Module):
             advantages = q_values
         else:
             # run the critic and use it as a baseline
-            values = ptu.to_numpy(self.critic(ptu.from_numpy(obs)))
-            assert values.shape == q_values.shape
+            values = ptu.to_numpy(self.critic(ptu.from_numpy(obs)).squeeze(-1))
+            assert values.shape == q_values.shape   # (N * H)
 
             if self.gae_lambda is None:
                 # if using a baseline, but not GAE, advantages = Q(st, at) - V(st)

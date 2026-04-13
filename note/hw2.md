@@ -26,6 +26,15 @@
     ```
 
 # Baseline
+1. Baseline can reach average eval return 300, but it's not stable in each sample.
+2. As the `blr` or `bgs` decrase, the converge speed becomes slower, the average eval return is still negative after 100 iterations.
+3. Increase the `-n` to 200 do increase the return, but return is still unstable in each sample (e.g. average eval return reach 393 at 196-th iteration but fall down to negative in 197-th iteration)
+4. `na` 
+
+# Advantage estimator
+1. GAE is not necessarily better or worse than n-step returns in general. GAE and n-step returns are just different ways to control the bias-variance tradeoff in policy gradient estimation, and they both have a hyperparameter (`λ` for GAE and `n` for n-step returns) that needs to be tuned in practice
+2. In policy gradient methods, GAE is often more popular than n-step returns
+3. In off-policy RL algorithms, n-step returns are more popular than GAE 
 
 # Result
 1. https://wandb.ai/yangzf23-independent-developer/cs285_hw2/workspace?nw=nwuseryangzf23
