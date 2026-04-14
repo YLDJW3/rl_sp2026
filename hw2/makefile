@@ -1,19 +1,22 @@
 .PHONY: reward
 
+reward_bg:
+	nohup caffeinate -dimsu $(MAKE) reward > reward.log 2>&1 &
+
 reward:
-#	uv run src/scripts/run.py --env_name CartPole-v0 -n 100 -b 1000 \
+	uv run src/scripts/run.py --env_name CartPole-v0 -n 100 -b 1000 \
 		--exp_name cartpole \
 		--seed 42
 
-#	uv run src/scripts/run.py --env_name CartPole-v0 -n 100 -b 1000 \
+	uv run src/scripts/run.py --env_name CartPole-v0 -n 100 -b 1000 \
 		-rtg --exp_name cartpole_rtg \
 		--seed 42
 
-#	uv run src/scripts/run.py --env_name CartPole-v0 -n 100 -b 1000 \
+	uv run src/scripts/run.py --env_name CartPole-v0 -n 100 -b 1000 \
 		-na --exp_name cartpole_na \
 		--seed 42
 
-#	uv run src/scripts/run.py --env_name CartPole-v0 -n 100 -b 1000 \
+	uv run src/scripts/run.py --env_name CartPole-v0 -n 100 -b 1000 \
 		-rtg -na --exp_name cartpole_rtg_na \
 		--seed 42
 
@@ -33,29 +36,27 @@ reward:
 		-rtg -na --exp_name cartpole_lb_rtg_na \
 		--seed 42
 
+baseline_bg:
+	nohup caffeinate -dimsu $(MAKE) baseline > baseline.log 2>&1 &
+
 baseline:
 # No baseline
-#	uv run src/scripts/run.py --env_name HalfCheetah-v4 -n 100 -b 5000 -eb 3000 -rtg \
+	uv run src/scripts/run.py --env_name HalfCheetah-v4 -n 100 -b 5000 -eb 3000 -rtg \
 		--discount 0.95 -lr 0.01 --exp_name cheetah
 
 # Baseline
-#	uv run src/scripts/run.py --env_name HalfCheetah-v4 -n 100 -b 5000 -eb 3000 -rtg \
+	uv run src/scripts/run.py --env_name HalfCheetah-v4 -n 100 -b 5000 -eb 3000 -rtg \
 		--discount 0.95 -lr 0.01 --use_baseline -blr 0.01 -bgs 5 --exp_name cheetah_baseline
 
-# Baseline lr=0.02 n=200
-#	uv run src/scripts/run.py --env_name HalfCheetah-v4 -n 200 -b 5000 -eb 3000 -rtg \
-		--discount 0.95 -lr 0.01 --use_baseline -blr 0.01 -bgs 5 --exp_name cheetah_baseline \
-		--seed 42
-
 # No baseline na
-#	uv run src/scripts/run.py --env_name HalfCheetah-v4 -n 100 -b 5000 -eb 3000 -rtg \
+	uv run src/scripts/run.py --env_name HalfCheetah-v4 -n 100 -b 5000 -eb 3000 -rtg \
 		--discount 0.95 -lr 0.01 --exp_name cheetah \
 		-na
 
 # Baseline na
 	uv run src/scripts/run.py --env_name HalfCheetah-v4 -n 100 -b 5000 -eb 3000 -rtg \
 		--discount 0.95 -lr 0.01 --use_baseline -blr 0.01 -bgs 5 --exp_name cheetah_baseline \
-		-na --gae_lambda 1
+		-na
 
 LAMBDA ?= 1
 LAMBDA_LIST ?= 0 0.95 0.98 0.99 1
@@ -75,13 +76,24 @@ gae:
 		--gae_lambda $(LAMBDA) --exp_name lunar_lander_lambda$(LAMBDA)
 
 pendulum:
-	uv run src/scripts/run.py --env_name InvertedPendulum-v4 -n 1 -b 1000 -eb 400 \
+#	uv run src/scripts/run.py --env_name InvertedPendulum-v4 -n 100 -b 5000 -eb 1000 \
+		--exp_name pendulum
+
+#	uv run src/scripts/run.py --env_name InvertedPendulum-v4 -n 100 -b 5000 -eb 1000 \
 		--exp_name pendulum \
-		-l 3 \
-		-s 64 \
-		-lr 0.005 \
+		-rtg \
+		-na \
+		--use_baseline
+
+	uv run src/scripts/run.py --env_name InvertedPendulum-v4 -n 100 -b 2000 -eb 1000 \
+		--exp_name pendulum \
 		-rtg \
 		-na \
 		--use_baseline \
-		--gae_lambda 0 \
-		--seed 42
+		--gae_lambda 0.98 \
+		--discount 0.995 \
+		-l 3 \
+		-s 128 \
+		-lr 0.01 \
+		-blr 0.01 \
+		-bgs 10
