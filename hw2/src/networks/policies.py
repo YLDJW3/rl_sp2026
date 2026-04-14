@@ -101,14 +101,15 @@ class MLPPolicyPG(MLPPolicy):
         """Implements the policy gradient actor update."""
         obs = ptu.from_numpy(obs)   # (N * H, obs_dim)
         actions = ptu.from_numpy(actions)   # (N * H, ac_dim)
-        advantages: torch.Tensor = ptu.from_numpy(advantages) # (N * H, 1)
+        advantages: torch.Tensor = ptu.from_numpy(advantages) # (N * H, )
 
         # compute the policy gradient actor loss
         dist : D.Distribution = self.forward(obs)
-        log_prob = dist.log_prob(actions)   # (N * H, 1) discrete, (N * H, ac_dim) continuous 
-        if log_prob.shape[-1] > 1:
+        log_prob = dist.log_prob(actions)   # (N * H, ) discrete, (N * H, ac_dim) continuous 
+        if not self.discrete:
             # for continuous action space
             log_prob = log_prob.sum(dim=-1)
+        assert log_prob.shape == advantages.shape
         loss = (-log_prob * advantages).mean()
         # perform an optimizer step
         self.optimizer.zero_grad()
@@ -116,4 +117,6 @@ class MLPPolicyPG(MLPPolicy):
         self.optimizer.step()
         return {
             "Actor Loss": loss.item(),
+            "Advantage mean": advantages.mean().item(),
+            "Advantage std": advantages.std().item(),
         }

@@ -11,3 +11,4 @@ dist/
 exp/
 
 output.txt
+*.log

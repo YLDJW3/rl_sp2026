@@ -173,8 +173,6 @@ class PGAgent(nn.Module):
                 advantages = advantages[:-1]
                 values = values[:-1]
                 if self.gae_lambda == 1:
-                    print(f"advantages {advantages}")
-                    print(f"q_values-valuee {q_values - values}")
                     assert np.allclose(advantages, q_values - values, 1e-5, 1e-8)
 
         # normalize the advantages to have a mean of zero and a standard deviation of one within the batch

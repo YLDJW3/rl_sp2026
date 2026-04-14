@@ -58,13 +58,16 @@ baseline:
 		-na --gae_lambda 1
 
 LAMBDA ?= 1
-LAMBDA_LIST ?= 0.95 0.98 0.99
+LAMBDA_LIST ?= 0 0.95 0.98 0.99 1
+
+gae_sweep_bg:
+	nohup caffeinate -dimsu $(MAKE) gae_sweep > gae_sweep.log 2>&1 &
 
 gae_sweep:
+	set -euo pipefail; \
 	for lambda in $(LAMBDA_LIST); do \
-		nohup $(MAKE) gae LAMBDA=$$lambda > output_$$lambda.log 2>&1 & \
-	done; \
-	wait
+		$(MAKE) gae LAMBDA=$$lambda > output_$$lambda.log 2>& 1; \
+	done
 
 gae:
 	uv run src/scripts/run.py --env_name LunarLander-v2 --ep_len 1000 --discount 0.99 \
@@ -72,11 +75,13 @@ gae:
 		--gae_lambda $(LAMBDA) --exp_name lunar_lander_lambda$(LAMBDA)
 
 pendulum:
-	uv run src/scripts/run.py --env_name InvertedPendulum-v4 -n 100 -b 5000 -eb 1000 \
+	uv run src/scripts/run.py --env_name InvertedPendulum-v4 -n 1 -b 1000 -eb 400 \
 		--exp_name pendulum \
-		--discount 0.95 \
-		-l 3 -s 128 \
-		-lr 0.01 \
+		-l 3 \
+		-s 64 \
+		-lr 0.005 \
 		-rtg \
 		-na \
-		--use_baseline -blr 0.01 -bgs 5 \
+		--use_baseline \
+		--gae_lambda 0 \
+		--seed 42

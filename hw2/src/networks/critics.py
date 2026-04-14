@@ -43,7 +43,8 @@ class ValueCritic(nn.Module):
         q_values : torch.Tensor = ptu.from_numpy(q_values)
 
         # compute the loss using the observations and q_values
-        values = self.forward(obs)
+        values = self.forward(obs).squeeze(-1)
+        assert values.shape == q_values.shape
         loss = (q_values - values).square().mean()
         # perform an optimizer step
         self.optimizer.zero_grad()
