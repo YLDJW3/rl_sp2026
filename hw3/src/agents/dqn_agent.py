@@ -41,51 +41,70 @@ class DQNAgent(nn.Module):
 
         self.update_target_critic()
 
+        print(f"DQNAgent initialized:")
+        print(f"  observation_shape={self.observation_shape}")
+        print(f"  num_actions={self.num_actions}")
+        print(f"  discount={self.discount}")
+        print(f"  target_update_period={self.target_update_period}")
+        print(f"  clip_grad_norm={self.clip_grad_norm}")
+        print(f"  use_double_q={self.use_double_q}")
+
     def get_action(self, observation: np.ndarray, epsilon: float = 0.0) -> int:
         """
         Epsilon-greedy action selection (default epsilon=0 for deterministic/greedy policy).
         """
         observation = ptu.from_numpy(np.asarray(observation))[None]
 
-        # TODO(Section 2.4): get the action from the critic using an epsilon-greedy strategy
-        action = None
-        # ENDTODO
+        # (Section 2.4): get the action from the critic using an epsilon-greedy strategy
+        best_ac = torch.argmax(self.critic(observation))
+        if np.random.rand() >= epsilon:
+            action = best_ac
+        else:
+            action = np.random.randint(0, self.num_actions)
+            # if action >= best_ac.item():
+            #     action += 1
+            action = torch.tensor(action)
 
         return ptu.to_numpy(action).squeeze(0).item()
 
     def update_critic(
         self,
-        obs: torch.Tensor,
-        action: torch.Tensor,
-        reward: torch.Tensor,
-        next_obs: torch.Tensor,
-        done: torch.Tensor,
+        obs: torch.Tensor,      # (N, ob_dim)
+        action: torch.Tensor,   # (N, )
+        reward: torch.Tensor,   # (N, )
+        next_obs: torch.Tensor, # (N, ob_dim)
+        done: torch.Tensor,     # (N, )
     ) -> dict:
         """Update the DQN critic, and return stats for logging."""
         (batch_size,) = reward.shape
 
         # Compute target values
         with torch.no_grad():
-            # TODO(Section 2.4): compute target values
-            next_qa_values = None
+            # (Section 2.4): compute target values
+            next_qa_values = self.target_critic(next_obs)   # (N, ac_dim)
 
             if self.use_double_q:
-                # TODO(Section 2.5): implement double-Q target action selection
-                next_action = None
+                # (Section 2.5): implement double-Q target action selection
+                # choose action using critic network
+                # evaluate value using target network
+                next_action = torch.argmax(self.critic(next_obs), dim=-1)
             else:
-                next_action = None
+                next_action = torch.argmax(next_qa_values, dim=-1)  # (N, )
 
-            next_q_values = None
+            # if done[i] = 1 then next_q_values[i] will be 0
+            next_q_values = (1 - done.int()) * next_qa_values[torch.arange(batch_size), next_action] # (N, )
             assert next_q_values.shape == (batch_size,), next_q_values.shape
 
-            target_values = None
+            assert reward.shape == next_q_values.shape
+            target_values = reward + self.discount * next_q_values
             assert target_values.shape == (batch_size,), target_values.shape
             # ENDTODO
 
-        # TODO(Section 2.4): train the critic with the target values
-        qa_values = None
-        q_values = None
-        loss = None
+        # (Section 2.4): train the critic with the target values
+        qa_values = self.critic(obs)    # (N, ac_dim)
+        q_values = qa_values[torch.arange(batch_size), action]    # (N, )
+        assert q_values.shape == target_values.shape, q_values.shape
+        loss = self.critic_loss(q_values, target_values)
         # ENDTODO
 
         self.critic_optimizer.zero_grad()
@@ -119,9 +138,10 @@ class DQNAgent(nn.Module):
         """
         Update the DQN agent, including both the critic and target.
         """
-        # TODO(Section 2.4): update the critic, and the target if needed
-        critic_stats = None
-        # Hint: if step % self.target_update_period == 0: ...
+        # (Section 2.4): update the critic, and the target if needed
+        critic_stats = self.update_critic(obs, action, reward, next_obs, done)
+        if step % self.target_update_period == 0:
+            self.update_target_critic()
         # ENDTODO
 
         return critic_stats

@@ -69,6 +69,9 @@ def init_gpu(use_gpu=True, gpu_id=0):
     if torch.cuda.is_available() and use_gpu:
         device = torch.device("cuda:" + str(gpu_id))
         print("Using GPU id {}".format(gpu_id))
+    elif torch.backends.mps.is_available() and use_gpu:
+        device = torch.device("mps")
+        print("Using MPS.")
     else:
         device = torch.device("cpu")
         print("Using CPU.")
@@ -85,6 +88,8 @@ def from_numpy(data: Union[np.ndarray, dict], **kwargs):
         data = torch.from_numpy(data, **kwargs)
         if data.dtype == torch.float64:
             data = data.float()
+        if data.dtype == torch.bool:
+            data = data.int()
         return data.to(device)
 
 
