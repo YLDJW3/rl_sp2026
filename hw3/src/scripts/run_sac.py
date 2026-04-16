@@ -61,8 +61,9 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
         if step < config["random_steps"]:
             action = env.action_space.sample()
         else:
-            # TODO(Section 3.1): Select an action
-            action = None
+            # (Section 3.1): Select an action
+            with torch.no_grad():
+                action = agent.get_action(observation)
             # ENDTODO
 
         # Step the environment and add the data to the replay buffer
@@ -86,9 +87,17 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
 
         # Train the agent
         if step >= config["training_starts"]:
-            # TODO(Section 3.1): Sample a batch of config["batch_size"] transitions from the replay buffer
-            batch = None
-            update_info = None
+            # (Section 3.1): Sample a batch of config["batch_size"] transitions from the replay buffer
+            batch = replay_buffer.sample(config["batch_size"])
+            batch = ptu.from_numpy(batch)
+            update_info = agent.update(
+                observations=batch['observations'],
+                actions=batch['actions'],
+                next_observations=batch['next_observations'],
+                rewards=batch['rewards'],
+                dones=batch['dones'],
+                step=step,
+            )
             # ENDTODO
 
             # Logging

@@ -81,3 +81,52 @@ The only difference in implementation is choose a' = argmax_a_Q(s', a) where Q i
 if self.use_double_q:
     next_action = torch.argmax(self.critic(next_obs), dim=-1)
 ```
+
+## Result
+1. `uv run src/scripts/run_dqn.py -cfg experiments/dqn/cartpole.yaml --eval_interval 2500`
+    reach a return of 500, `ndim=2`
+2. `uv run src/scripts/run_dqn.py -cfg experiments/dqn/lunarlander.yaml`
+    reach a return of 200
+3. `uv run src/scripts/run_dqn.py -cfg experiments/dqn/mspacman.yaml`
+    took 6hr on MPS
+    receive a score over 2000
+4. Hyperparameters experiment on MsPacman-v0
+    1. lr
+        - start at 1e-4, deacy to 5e-5 at step 500k linearly
+    2. network architecture
+        - Conv2d + ReLU + Conv2d + ReLU + Conv2d + ReLU + Flatten + Linear + ReLU + Linear
+    3. explorations schedule
+        - epsilon start at 1, decay to 0.01 at step 500k linearly
+    4. target network update frequency
+        - 2000
+# SAC
+## DDPG
+1. https://spinningup.openai.com/en/latest/algorithms/ddpg.html
+
+## Algorithm
+1. Input
+    initial policy parameters $\theta$
+    Q-function parameters $\phi_1, \phi_2$
+    empty replay buffer $\mathcal{D}$
+2. Set target network parameters equal to online network parameters $\phi_{targ,1} \leftarrow \phi_1, \phi_{targ,2} \leftarrow \phi_2$
+3. repeat
+    1. Generate samples (s,a,r,s',d), store them in replay buffer $\mathcal{D}$
+    2. Randomly sample a batch $\mathcal{B}$ of transitions from $\mathcal{D}$
+    3. Compute target for Q functions
+        $$
+        a' \sim \pi_{\theta}(\cdot | s') \\
+        y(r,s',d) = r + \gamma(1 - d)(min_{i=1,2}Q_{\phi_{targ,i}}(s',a') - \alpha log\pi_{\theta}(a'|s'))
+        $$
+    4. update Q-functions by one step of gradient descent
+        $$
+        \nabla_{\phi_i}\frac{1}{|\mathcal{B}|}\sum_{\mathcal{B}}(Q_{\phi_i}(s,a) - y(r,s',d))^2
+        $$
+    5. update policy by one step of gradient ascent
+        $$
+        \nabla_{\theta}\frac{1}{\mathcal{B}}\sum_{s \in \mathcal{B}}(minQ_{\phi_i}(s,a_{\theta}(s)) - \alpha log\pi_{\theta}(a_{\theta}(s) | s))
+        $$
+    6. update target network with
+        $$
+        \phi_{targ,i} \leftarrow \rho\phi_{targ,i} + (1-\rho)\phi_i
+        $$
+
