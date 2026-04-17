@@ -130,3 +130,26 @@ if self.use_double_q:
         \phi_{targ,i} \leftarrow \rho\phi_{targ,i} + (1-\rho)\phi_i
         $$
 
+## Implementation
+1. Entropy bonus
+2. Reparameterize trick
+3. Temperature autotune
+
+## Result
+0. `https://wandb.ai/yangzf23-independent-developer/hw3/workspace?nw=nwuseryangzf23`
+1. SAC implementation
+    `uv run src/scripts/run_sac.py -cfg experiments/sac/sanity_invertedpendulum.yaml`
+    reach a return of 1000
+    `uv run src/scripts/run_sac.py -cfg experiments/sac/halfcheetah.yaml`
+    reach a return over 10k
+2. Temperature autotune 
+    `uv run src/scripts/run_sac.py -cfg experiments/sac/sanity_invertedpendulum_autotune.yaml`
+    reach a return of 1000
+    `uv run src/scripts/run_sac.py -cfg experiments/sac/halfcheetah_autotune.yaml`
+    the learning curve is similar to fix fine-tuned temperature version, reach a return over 10k
+3. Clipped double-Q
+    `uv run src/scripts/run_sac.py -cfg experiments/sac/hopper_singleq.yaml`
+    reach a return of 750
+    `uv run src/scripts/run_sac.py -cfg experiments/sac/hopper_clipq.yaml`
+    reach a retufn of 1500
+    `q_values` and `target_values` curves show the clipping machanism works

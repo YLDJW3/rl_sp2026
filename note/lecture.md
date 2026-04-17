@@ -152,3 +152,26 @@
     $$L(\theta) = -\frac{1}{N} \sum_{i=1}^{N} \sum_{t=1}^{T} \log \pi_{\theta}(a_{i,t}|s_{i,t}) \hat{Q}_{i,t}$$
 2. Using much **larger batch sizes** to reduce the variance of the policy gradient estimator
 3. Tweaking the learning rate is very hard. Using `Adam` is a good starting point
+
+# Off-policy Policy Gradient
+
+
+# Value-based RL
+1. Actor-critic architecture
+2. DQN
+    replay buffer
+    target network
+    double Q learning
+3. SAC
+    continuous action space
+    policy network
+        output $\pi(a|s) \sim \mathcal{N}(\mu, \sigma)$
+        reparameterization
+    critic network
+        clipped double Q
+        target network
+        soft target network update
+        entropy bonus
+    automatic temeperature tuning
+
+

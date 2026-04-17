@@ -56,13 +56,11 @@ class DQNAgent(nn.Module):
         observation = ptu.from_numpy(np.asarray(observation))[None]
 
         # (Section 2.4): get the action from the critic using an epsilon-greedy strategy
-        best_ac = torch.argmax(self.critic(observation))
+        best_ac = torch.argmax(self.critic(observation), dim=-1)
         if np.random.rand() >= epsilon:
             action = best_ac
         else:
             action = np.random.randint(0, self.num_actions)
-            # if action >= best_ac.item():
-            #     action += 1
             action = torch.tensor(action)
 
         return ptu.to_numpy(action).squeeze(0).item()

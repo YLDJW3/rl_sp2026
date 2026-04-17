@@ -5,6 +5,7 @@ import gym
 import cv2
 from infrastructure import pytorch_util as ptu
 from typing import Dict, Tuple, List
+import torch
 
 ############################################
 ############################################
@@ -34,7 +35,8 @@ def sample_trajectory(
             )
 
         # Get action from policy
-        ac = policy.get_action(ob)
+        with torch.no_grad():
+            ac = policy.get_action(ob)
 
         # Take action and get reward and next observation
         next_ob, rew, done, info = env.step(ac)

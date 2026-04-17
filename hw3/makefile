@@ -9,17 +9,22 @@ d-dqn2:
 		uv run src/scripts/run_dqn.py -cfg experiments/dqn/mspacman.yaml \
 		> d-dqn.log 2>&1 &
 
-sac:
+sac-pendulum:
 	uv run src/scripts/run_sac.py -cfg experiments/sac/sanity_invertedpendulum.yaml
 
-sac1:
+sac-halfcheetah:
 	nohup caffeinate -dims \
 		uv run src/scripts/run_sac.py -cfg experiments/sac/halfcheetah.yaml \
 		> sac.log 2>&1 &
 
-sac2:
-	uv run src/scripts/run_sac.py -cfg experiments/sac/halfcheetah_autotune.yaml
+sac-autotune-pendulum:
+	uv run src/scripts/run_sac.py -cfg experiments/sac/sanity_invertedpendulum_autotune.yaml
 
-sac3:
+sac-autotune-halfcheetah:
+	nohup caffeinate -dims \
+		uv run src/scripts/run_sac.py -cfg experiments/sac/halfcheetah_autotune.yaml \
+		> halfcheetah.log 2>&1 &
+
+sac-clipped-double-Q:
 	uv run src/scripts/run_sac.py -cfg experiments/sac/hopper_singleq.yaml
 	uv run src/scripts/run_sac.py -cfg experiments/sac/hopper_clipq.yaml
