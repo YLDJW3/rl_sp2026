@@ -134,3 +134,80 @@ $$
     $$
     L^{\text{grpo}}(\theta) = L_{\text{pg}}^{\text{grpo}}(\theta) + \beta \widehat{\text{KL}}(\pi_\theta \| \pi_{\text{ref}}).
     $$
+# Impl
+## LLM as policy
+1. `compute_per_token_logprobs`
+    1. calculate $log\pi_{\theta}(y_{i,t}|x_i,y_{i,<t})$
+    2. `out = model(input_ids, attention_mask)` where `model` is `Qwen/Qwen2.5-Math-1.5B-Instruct`, `out` returns logits of shape `(B, L, V)`
+    3. trick: call `-F.cross_entropy` to calculate log softmax efficiently
+2. `build_completion_mask`
+    1. input_id is organized as `[prompt, completion, padding]`
+    2. all inputs share the same prompt with `prompt_input_len` 
+    3. `attention_mask` exclude the paddings
+    4. return a `completion_mask` of size `(B, L-1)` to indicate the completion
+3. `approx_kl_from_logprobs`
+    1. exact KL divergence is
+    $$
+    \mathrm{KL}\left(\pi_\theta(\cdot \mid s)||\pi_{\mathrm{ref}}(\cdot \mid s)\right)
+    = \mathbb{E}_{a \sim \pi_\theta(\cdot \mid s)}
+    \left[\log \pi_\theta(a \mid s)-\log \pi_{\mathrm{ref}}(a \mid s)\right]
+    $$
+    2. use sampled-token estimator
+    $$
+    \hat{k}(a) = e^{\Delta(a)}-\Delta(a)-1 \\
+    \Delta(a) = \log \pi_{\mathrm{ref}}(a \mid s) - \log \pi_\theta(a \mid s)
+    $$
+    3. return masked mean of `(B, L-1)` shape
+## Minibatch
+1. `iter_minibatches`
+    1. Split `RolloutBatch` into minibatches of `minibatch_size`
+    2. GR-REINFORCE is strictly on-policy. Setting `batch_size=8`, `group_size=8` `minibatch_size=8` and `grad_accum_steps=8`, then **number of minibatches equals to grad_accum_step**, and gradients are accumulated across 8 minibatches before taking one optimizer step
+    3. GRPO reuses old policy samples for `ppo_epochs > 1`
+## Group relative advantages
+1. `compute_group_advantages`
+    1. convert rewards from shape `(batch_size * group_size, )` to `(batch_size, group_size)`
+    2. calculate group relative advantages by
+    $$
+    A_{i,j} = \frac{r_{i,j} - \mu_i}{\sigma_i + \varepsilon}, \quad \mu_i = \frac{1}{G} \sum_{j=1}^G r_{i,j}, \quad \sigma_i = \sqrt{\frac{1}{G} \sum_{j=1}^G (r_{i,j} - \mu_i)^2}.
+    $$
+    3. convert rewards back to shape `(batch_size * group_size, )`
+2. `maybe_normalize_advantages`: normalize advantages across all samples (the same normalize advantage trick as hw1-3)
+
+## Policy update
+1. `Reinforce.update`
+    1. use `completion_mask` for calculating to exclude prompt and padding tokens
+    $$
+    \bar{\ell}_i(\theta)=\frac{1}{T_i}\sum_{t=1}^{T_i}\log \pi_\theta\left(y_{i,t}\mid x_i,y_{i,<t}\right)
+    $$
+    2. use `completion_mask` for calculating KL
+2. `GRPO.update`
+    1. calculate `log_ratio` with `new_logprobs` and `old_logprobs`, get ratio by `log_ratio.exp()`
+    $$
+    \rho_{i,t}(\theta) = \frac{\pi_{\theta}(y_{i,t} \mid x_i, y_{i,<t})}{\pi_{\text{old}}(y_{i,t} \mid x_i, y_{i,<t})}
+    $$
+    2. use `torch.clip` and `torch.min` to get clipped token objective
+    $$
+    \min\left(\rho_{i,t}(\theta)A_i, \ \text{clip}(\rho_{i,t}(\theta), 1 - \epsilon, 1 + \epsilon)A_i\right)
+    $$
+    3. use `completion_mask` to calculate seq objective 
+    $$
+    \frac{1}{T_i} \sum_{t=1}^{T_i} \min\left(\rho_{i,t}(\theta)A_i, \ \text{clip}(\rho_{i,t}(\theta), 1 - \epsilon, 1 + \epsilon)A_i\right)
+    $$
+
+# Result
+1. REINFORCE on format_copy
+    1. run on local CPU take 2.5hr
+    2. reward starts near 0, jumps sharply by about step 10, and reaches about 1.3 by the end 
+    3. eval exact match usually approaches 1.0
+2. GRPO on format_copy
+    1. run on local CPU take 3hr
+    2. reward starts near 0, jumps sharply by about step 10, and reaches about 1.3 by the end 
+    3. eval exact match usually approaches 1.0
+3. REINFORCE on hard math
+    1. run on Modal H100 take 2hr
+    2. final eval reach 0.28+
+4. GRPO on hard math
+    1. run on Modal H100 take 5.5hr
+    2. final eval reach 0.39+
+5. Gr-reinforce vs GRPO on math
+    1. In the first 200 iterations, the `eval/math_hard_test_subset_split_fraction_exact_match_using_boxed_answer_parser` of GRPO climbs up to 0.34+ from 0.22+, whose growth is approximately double as Gr-reinforce. Since GRPO set `ppo_epochs=2` and share the same `batch_size, group_size, minibatch_size, grad_accum_steps` with Gr-refinforce, the optimizer steps also double, and they share the same lr schedule, the eval result is expected

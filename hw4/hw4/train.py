@@ -202,7 +202,17 @@ def compute_group_advantages(rewards: torch.Tensor, group_size: int, eps: float 
     #   of your choice for that group
     #
     # Return a flat tensor with the same shape/order as rewards.
-    raise NotImplementedError("student TODO: compute_group_advantages")
+    assert rewards.dim() == 1, rewards.shape
+    assert group_size > 0
+    assert rewards.shape[0] % group_size == 0
+    batch_size = rewards.shape[0] // group_size
+    rewards = rewards.reshape((batch_size, group_size))
+    mean = rewards.mean(dim=-1, keepdim=True)
+    std = rewards.std(dim=-1, keepdim=True, unbiased=False)
+    assert mean.shape[:-1] == rewards.shape[:-1], mean.shape
+    assert std.shape[:-1] == rewards.shape[:-1], std.shape
+    rewards = (rewards - mean) / (std + eps)
+    return rewards.reshape((batch_size * group_size,))
 
 
 def maybe_normalize_advantages(advantages: torch.Tensor, enabled: bool, eps: float = 1e-6) -> torch.Tensor:
@@ -211,7 +221,13 @@ def maybe_normalize_advantages(advantages: torch.Tensor, enabled: bool, eps: flo
     # Again use the population standard deviation (unbiased=False).
     # Otherwise return A unchanged.
     # Keep the output shape identical to the input shape.
-    raise NotImplementedError("student TODO: maybe_normalize_advantages")
+    if not enabled:
+        return advantages
+    mean = advantages.mean(dim=-1, keepdim=True)
+    std = advantages.std(dim=-1, keepdim=True, unbiased=False)
+    assert advantages.shape[:-1] == mean.shape[:-1], mean.shape
+    assert advantages.shape[:-1] == std.shape[:-1], std.shape
+    return (advantages - mean) / (std + eps)
 
 
 def maybe_update_warmup_lr(optimizer: torch.optim.Optimizer, base_lr: float, step: int, warmup_steps: int) -> None:
@@ -461,6 +477,11 @@ def _format_seconds_compact(seconds: float) -> str:
         return f"{seconds / 60.0:.1f}m"
     return f"{seconds / 3600.0:.2f}h"
 
+def get_device() -> str:
+    if torch.cuda.is_available():
+        return "cuda"
+    else:
+        return "cpu"
 
 def main():
     cfg = parse_args()
@@ -498,7 +519,7 @@ def main():
 
     set_seed(cfg.seed)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device(get_device())
     dtype = torch.bfloat16 if device.type == "cuda" else torch.float32
 
     loaded = load_lora_policy_model_and_tokenizer(
