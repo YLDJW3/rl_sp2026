@@ -174,4 +174,102 @@
         entropy bonus
     automatic temeperature tuning
 
+# Variational inference
+
+# LLM RL
+
+# Model-based RL
+## Overview
+1. Learn the transistion dynamics
+2. Choose actions using the system dynamics
+3. Optimal control, trajectory optimization, planning
+4. Learned policies + learned dynamics
+
+## Open-loop planning
+1. Stochastic optimization
+    $$
+    a_1, ..., a_T = \arg \max_{a_1, ..., a_T} J(a_1, ..., a_T) \\
+    A = arg \max_{A} J(A)
+    $$
+    1. Guess and check
+        1. pick $A_1, ..., A_N$ from some distribution
+        2. choose $A_i$ based on $arg\max_{A_i} J(A_i)$
+    2. Cross-entropy method, CEM
+        1. pick $A_1, ..., A_N$ from some distribution
+        2. choose $A_i$ based on $arg\max_{A_i} J(A_i)$
+        3. **refit the distribution** to the best $A_i$
+        4. repeat until convergence
+2. Monte Carlo tree search (MCTS)
+    1. MCTS sketch
+    ```
+    Loop
+        1. find a leaf sl using TreePolicy(s1)
+        2. evaluate the leaf using DefaultPolicy(sl)
+        3. update all values in tree between s1 and sl
+    End
+    take best action from s1
+    ```
+    2. UCT TreePolicy
+        1. if st not fully expanded, choose new $a_t$
+        2. else choose child with best score
+        $$
+        Score(s_t) = \frac{Q(s_t)}{N(s_t)} + 2C \sqrt{\frac{\log N(s_{t-1})}{N(s_t)}}
+        $$
+## Trajectory optimization
+1. Object
+$$
+\min_{u_1,...u_t} c(x_1, u_1) + c(f(x_1, u_1), u_2) + ... + c(f(f(...)...), u_T) \\
+$$
+where $x_{t+1} = f(x_t, u_t)$
+2. Linear dynamics
+$$
+f(\mathbf{x}_t, \mathbf{u}_t) = \mathbf{F}_t 
+\begin{bmatrix}
+\mathbf{x}_t \\
+\mathbf{u}_t
+\end{bmatrix} + \mathbf{f}_t
+$$
+3. Quadratic cost
+$$
+c(\mathbf{x}_t, \mathbf{u}_t) = \frac{1}{2} \begin{bmatrix} \mathbf{x}_t \\ \mathbf{u}_t \end{bmatrix}^T \mathbf{C}_t \begin{bmatrix} \mathbf{x}_t \\ \mathbf{u}_t \end{bmatrix} + \begin{bmatrix} \mathbf{x}_t \\ \mathbf{u}_t \end{bmatrix}^T \mathbf{c}_t
+$$
+4. LQR
+    1. $V(x_t)$ is cost-to-go from state $x_t$ until end 
+    2. $Q(x_t, u_t)$ is the cost-to-go from state $x_t$ and take action $u_t$
+    3. $$V(x_t) = \min_{u_t} Q(x_t, u_t)$$
+    4. $Q(x_t, u_t)$ and $V(x_t)$ are all **quadratic functions** of $x_t$ and $u_t$, so we can solve for the optimal action $u_t$ in closed form
+5. Stochastic dynamics
+$$
+f(\mathbf{x}_t, \mathbf{u}_t) = \mathbf{F}_t 
+\begin{bmatrix}
+\mathbf{x}_t \\
+\mathbf{u}_t
+\end{bmatrix} + \mathbf{f}_t \\
+p(\mathbf{x}_{t+1}|\mathbf{x}_t, \mathbf{u}_t) = \mathcal{N}(\mathbf{F}_t \begin{bmatrix} \mathbf{x}_t \\ \mathbf{u}_t \end{bmatrix} + \mathbf{f}_t, \boldsymbol{\Sigma}_t)
+$$
+LQR still works
+6. **Nonlinear dynamics**: DDP/iterative LQR (iLQR)
+    1. Guess a trajectory $\tau = (x_1, u_1, ..., x_T, u_T)$
+    2. Linearize the dynamics around the trajectory
+    $$
+    \mathbf{F}_t = \nabla_{x_t, u_t} f(\hat{x}_t, \hat{u}_t) \\
+    $$
+    3. Quadraticize the cost around the trajectory
+    $$
+    c_t = \nabla_{x_t, u_t} c(\hat{x}_t, \hat{u}_t) \\
+    C_t = \nabla^2_{x_t, u_t} c(\hat{x}_t, \hat{u}_t) \\
+    $$
+    4. Run LQR backward pass on 
+        state $\delta x_t=x_t - \hat{x}_t$
+        action $\delta u_t = u_t - \hat{u}_t$
+    5. Run forward pass with real nonlinear dynamics 
+    $$
+    u_t = K_t(x_t-\hat{x}_t) + \alpha k_t + \hat{u}_t \\
+    x_{t+1} = f(x_t, u_t)
+    $$
+    $\alpha$ is the line search parameter
+    6. Update $\hat{x}_t$ and $\hat{u}_t$ based on states and actions in forward pass
+    7. Repeat until convergence
+
+# Offline RL
 
