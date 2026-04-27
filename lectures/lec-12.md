@@ -522,6 +522,76 @@ p(s_t|O_{1:T}) \propto \alpha_t(s_t)\beta_t(s_t).
 
 This is the same forward-backward structure as in HMMs.
 
+More explicitly, the forward recursion comes from marginalizing over the previous state and action:
+
+```math
+\alpha_t(s_t)
+=
+\int p(s_t, s_{t-1}, a_{t-1}\mid O_{1:t-1})\,ds_{t-1}\,da_{t-1}.
+```
+
+Factor the joint:
+
+```math
+\alpha_t(s_t)
+=
+\int
+p(s_t\mid s_{t-1}, a_{t-1}, O_{1:t-1})
+\,
+p(a_{t-1}\mid s_{t-1}, O_{1:t-1})
+\,
+p(s_{t-1}\mid O_{1:t-1})
+\,
+ds_{t-1}\,da_{t-1}.
+```
+
+Now use the graphical-model conditional independence:
+
+```math
+p(s_t\mid s_{t-1}, a_{t-1}, O_{1:t-1})
+=
+p(s_t\mid s_{t-1}, a_{t-1}),
+```
+
+because once `s_{t-1}, a_{t-1}` are known, the optimality variables do not directly affect the physical transition.
+
+Also rewrite the action term as the policy:
+
+```math
+\pi_{t-1}(a_{t-1}\mid s_{t-1})
+:=
+p(a_{t-1}\mid s_{t-1}, O_{1:t-1}),
+```
+
+and the previous forward message as:
+
+```math
+\alpha_{t-1}(s_{t-1}) = p(s_{t-1}\mid O_{1:t-2}).
+```
+
+Then the clean recursion is:
+
+```math
+\alpha_t(s_t)
+=
+\int
+p(s_t\mid s_{t-1}, a_{t-1})
+\,
+\pi_{t-1}(a_{t-1}\mid s_{t-1})
+\,
+\alpha_{t-1}(s_{t-1})
+\,
+ds_{t-1}\,da_{t-1}.
+```
+
+Interpretation:
+
+- `\alpha_{t-1}(s_{t-1})` says how likely it is that we reached `s_{t-1}`;
+- `\pi_{t-1}(a_{t-1}|s_{t-1})` says how likely we are to choose `a_{t-1}`;
+- `p(s_t|s_{t-1},a_{t-1})` is the environment dynamics.
+
+So forward messages propagate **reachability** forward, while backward messages propagate **future desirability** backward.
+
 ### 35. Forward/backward message intersection
 
 This slide gives the geometric intuition:

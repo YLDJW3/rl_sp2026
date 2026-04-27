@@ -271,5 +271,118 @@ LQR still works
     6. Update $\hat{x}_t$ and $\hat{u}_t$ based on states and actions in forward pass
     7. Repeat until convergence
 
-# Offline RL
+## Learned model
+1. Distribution shift
+    1. learn probability model
+    2. trust region policy update
+2. Uncertainty-aware nerual networks 
+    1. Environment uncertainty (aleatoric)
+    2. Model uncertainty (epistemic)
+3. Bayesian neural networks: high-dimensional, hard to scale up 
+4. Boostrap ensembles
+    1. Resample with replacment from $\mathcal{D}$
+    2. Train $N$ neural networks, $\theta_i$ is trained on $\mathcal{D}_i$
+    $$
+    p(\theta \mid D) \approx \frac{1}{N}\sum_i \delta(\theta_i) \\
+    \int p(s_{t+1}\mid s_t, a_t, \theta)\, p(\theta\mid D)\, d\theta
+    \approx
+    \frac{1}{N}\sum_i p(s_{t+1}\mid s_t, a_t, \theta_i)
+    $$
+## Different ways to use model
+### Planning with models
+1. Stochastic optimization
+    1. pick $A_1$, ..., $A_N$ from some districutions
+    2. choose $\argmax_i J(A_i)$
+2. Cross-entropy method
+    1. pick $A_1$, ..., $A_N$ from some districutions
+    2. evaluate $J(A_i)$
+    3. pick the top M samples $A_1, ..., A_M$
+    4. refit $p(A)$ to $A_1, ..., A_M$
+3. Monte Carlo tree search
+4. Continuous trajectory optimization, LQR
+5. Plan with uncertainty
+    1. plan under an esemble of models
+    2. posterior estimation with BNNs
+### Policy learning with models
+1. Tradeoff
+    1. Long rollouts see further into the future but accumulate **large error**
+    2. Short roolouts are more accurate but **not expose later consequences**
+2. Model based RL with **short rollouts**
+    1. Run base policy $\pi_0(a_t \mid s_t)$, collect $\mathcal{D} = {(s,a,s')_i}$
+    2. Learn dynamic model $f(s, a)$ to minimize MSE $\sum_i ||f(s_i, a_i) - s_i'||^2$
+    3. Repeat K times
+      1. Pick states $s_i$ from $\mathcal{D}$, use $f(s, a)$ to make short rollouts
+      2. Use both real and model data to imporve $\pi_{\theta}(a|s)$ with off-policy RL
+    4. Run $\pi_{\theta}(a|s)$ and append visited data to $\mathcal{D}$
+3. Dyna style model-based RL
+    1. Run base policy $\pi_0(a_t \mid s_t)$, collect $\mathcal{B} = {(s,a,s')_i}$
+    2. Learn model $\hat{p}(s' | s, a)$ and $\hat{r}(s, a)$
+    3. Repeat k times
+      1. Sample $s\sim\mathcal{B}$ from buffer
+      2. Choose action a from $\mathcal{B}$ or policy or random
+      3. Simulate $s'\sim\hat{p}$ and $r = \hat{r}$
+      4. Train on (s, a, s', r) with model-free RL
+      5. Take N more mode-based steps
+4. Model-accelerated off-policy RL, MBA
+    1. Data collections: stored in **real transition buffer**
+    2. Learn transition model: train $\hat{p}$ (and reward model $\hat{r}$) on real transition data
+    3. Generate model-based transitions: pick state from real transition buffer, use learned model to generate imaginary transitions, stored in **model-based transition buffer**
+    4. Learn Q-function: train on real + model-based transistion data
+    5. Update policy: with learned Q-function
+    6. Data evict
+      1. model-based transition buffer: evicted once the model changes (every iteration) 
+      2. real transition buffer: evicted old data (sliding window)
+5. MBA, MVE and MBPO
+    1. MBA: use **model-based transitions data** to accelearte model-free learning
+    2. MVE: use model to **improve target value** in a Bellman update 
+      $$y = r_0 + γ r_1 + γ² r_2 + ... + γ^H V(s_H)$$
+      where $r_i$ is given by the learned model, $V(s_H)$ is given by the learned V function
+    3. MBPO: a specific implementation of MBA
+      1. Learn an ensemble dynamics model
+      2. Start short rollouts from real replay-buffer states
+      3. Choose actions from current policy
+      4. Train SAC on real + model data
+### Latent state-space model
+1. Object
+    $$
+    \max_{\phi,\psi} \frac{1}{N} \sum_{i=1}^{N} \sum_{t=1}^{H}
+    \mathbb{E}_{q}
+    \left[
+    \log p_{\phi}(s_{t+1,i} \mid s_{t,i}, a_{t,i})
+    +
+    \log p_{\phi}(o_{t,i} \mid s_{t,i})
+    \right]
+    +
+    \mathcal{H}\left(
+    q_{\psi}(s_t, s_{t+1} \mid o_{1:H,i}, a_{1:H,i})
+    \right)
+    $$
+2. Latent space model
+    1. Encoder
+        1. full smoothing posterior: $q_{\psi}(s_t, s_{t+1}\mid o_{1:H}, a_{1:H})$
+        2. single step encoder: $q_{\psi}(s_t\mid o_t)$
+    3. Decoder: $p(o_t\mid s_t)$
+    4. Dynamics model: $p(s_{t+1}|s_t, a_t)$
+    5. Reward model: $p(r_{t}|s_t, a_t)$
+3. Model-based RL with latent space models 
+    1. run base policy to collect $\mathcal{D}$
+    2. learn dynamics model, reward model, encoder and decoder
+    3. plan through model to choose actions
+    4. execute the first planned action, observe result o'(MPC)
+    5. append $(o, a, o')$ to dataset $\mathcal{D}$
+4. Actor-critic with learned representations
+    1. Learn latent model from real data
+    2. Train actor-critic on inferred latent states (still use real data)
+5. Actor-critic + model-based RL
+    1. Learn latent model from real data
+    2. Use learned model to **generate transition data**
+      real observation data $o_i$
+      -> encoder gives latent state $s_i$
+      -> choose action $a_i$ from $\pi(a | s)$ or $\pi(a | o)$
+			-> reward model predict reward $r_i$
+      -> dynamic model predict next state $s_i'$
+      -> add $(s_i, a_i, s_i')$ model-based transition to buffer
+    3. Train actor-critic on real data + model-based data
 
+
+# Offline RL
