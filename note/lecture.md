@@ -384,5 +384,127 @@ LQR still works
       -> add $(s_i, a_i, s_i')$ model-based transition to buffer
     3. Train actor-critic on real data + model-based data
 
-
 # Offline RL
+## Basic
+1. What: train an RL policy from a **fixed dataset** without further environment interaction  
+2. Why: online trial-and-error is expensive or unsafe, which is common in robotics, healthcare...
+## Distributional shift
+1. Chanllenge
+	1. Standard RL repeatedly does
+		1. fit a value function or model to estimate return
+		2. improve policy using that estimate
+		3. **generate new samples** by running the improved policy
+	2. Offline RL breaks step 3
+2. Value-based RL
+	1. Dataset only contains samples from $\pi_{\beta}$
+	2. Target network update use action from $\pi_{\theta}$
+	$$
+	y_i = r(s_i, a_i) + \gamma \mathbb{E}_{a'\sim\pi_{\theta}(a'\mid s_i')}[Q_{\phi}^{\pi_{\theta}}(s_i', a')] \\
+	\phi \leftarrow \argmin_{\phi} \mathbb{E}_{s, a\sim\pi_{\beta}(s, a)}||Q_{\phi}^{\pi_{\theta}}(s, a) - y||^2
+	$$
+	3. Intuition: policy does what target network thinks is good, but the target network is wrong on unsupported actions
+3. Model-basd RL
+	1. Model is trained under $\pi_{\beta}$
+	2. Model-based transition data generation use $\pi_{\theta}$
+	3. Intuition: model generated transition is wrong on unsupported $(s, a)$
+4. Importance sampled policy graident
+	1. High variance if ratio $\frac{\pi_{\theta}(a|s)}{\pi_{\beta}(a|s)}$ vary far from 1.0
+## Policy constraints
+1. Forward KL
+	1. $D_{KL}(\pi_{\beta}(a|s)||\pi_{\theta}(a|s))$
+	2. mode covering
+	3. penalize the learned policy if it fails to assign probability to actions that appeared in the behavior data
+2. Reverse KL: 
+	1. $D_{KL}(\pi_{\theta}(a|s)||(\pi_{\beta}(a|s)))$
+	2. model seeking 
+	3. penalize the learned policy for putting probability on actions that are unlikely under the behavior data
+3. Support KL constraint
+	1. constraint $\pi_{\theta}(a | s) > 0$ only where $\pi_{\beta}(a | s) > 0$
+	2. not easy to implement, depend on your state/action sapce
+4. Explicit policy constraint methods
+    1. BRAC-like algorithm
+    2. AC+BC-like algorithm
+    3. Intuition: add KL penalty to the object function
+5. Implicit policy constraint methods 
+    1. Advantage-Weighted Actor-Critic, AWAC-like algorithm
+    2. Intuition: imitate dataset actions, and imitate high-advantage actions much more
+
+## IQL
+1. Learn $V$ to **upper expectiles** of Q-values on dataset actions
+2. Evaluate target $y_i = r(s_i, a_i) + \gamma\hat{V}_{\psi}(s_i')$
+3. Learn $Q$ with $
+\nabla_{\psi} \sum_{i=1}^{B}
+\ell_2^{\tau}\left(
+\hat{V}_{\psi}(s_i) - \hat{Q}_{\phi}(s_i, a_i)
+\right)
+$
+4. Update policy with advantage-weighted objects
+    ```math
+    J(\theta)
+    =
+    \sum_i
+    \log \pi_\theta(a_i \mid s_i)
+    \exp\left(
+    \hat{Q}_\phi(s_i, a_i) - \hat{V}_\psi(s_i)
+    \right)
+    ```
+
+## CQL
+1. Intuition: always push Q-values down, but push up on $(s, a)$ samples in data
+2. Loss function
+    ```math
+    \begin{aligned}
+    \hat{Q}^{\pi}
+    =&
+    \arg\min_Q \max_\mu
+    \alpha \mathbb{E}_{s \sim \mathcal{D},\, a \sim \mu(a \mid s)}
+    \left[ Q(s,a) \right]
+    -
+    \alpha \mathbb{E}_{(s,a) \sim \mathcal{D}}
+    \left[ Q(s,a) \right]
+    -
+    \mathcal{R}(\mu) \\
+    &+
+    \mathbb{E}_{(s,a,s') \sim \mathcal{D}}
+    \left[
+    \left(
+    Q(s,a)
+    -
+    \left(
+    r(s,a) + \mathbb{E}_{\pi}[Q(s',a')]
+    \right)
+    \right)^2
+    \right]
+    \end{aligned}
+    ```
+3. $\mathcal{R}(\mu)$ is the regularization term, common choose is $\mathbb{E}_{s\sim D}[\mathcal{H}(\mu(\cdot|s))]$
+
+## Offline to online RL
+1. Problem
+    1. Strong pessimism is useful offline but can **slow online exploration** and value recalibration
+    2. It is hard to design one algorithm that is optimal for both **offline pretraining** and **online fine-tuning**
+2. An embarrassingly effective method
+    1. Initialize an online replay buffer and an offline data buffer
+    2. Initialize the value function and actor from scratch (**no pretraining**)
+    3. Run online RL, and for every batch sample **50/50** from the two data buffers
+3. IDQL: offline to online RL with diffusion
+    1. Train $Q(s, a)$ and $V(s)$ with IQL
+    2. Compute advantage weight 
+    $$
+    w(s, a) = \exp{Q(s, a)-V(s)}
+    $$
+    3. Train conditional **diffusion policy** $\pi_{\theta}(a|s)$
+4. FQL: actor stay close to diffusion model
+    1. Train flow model as a prior
+    2. Train regular nn actor to produce high-Q actions while **staying close to that flow model**
+5. Diffusion steering
+
+## Model-based offline RL
+1. MOPO: model-based offline policy optimization
+$$
+\tilde{r}(s, a) = r(s, a) - \lambda \, u(s, a)
+$$
+where $u(s, a)$ is the uncertainty penalty
+2. COMBO: conservative model-based RL
+    1. follow the idea from CQL
+    2. minimize Q-value of model state-action tuples
