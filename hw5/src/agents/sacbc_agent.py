@@ -26,6 +26,7 @@ class SACBCAgent(nn.Module):
     ):
         super().__init__()
 
+        self.action_dim = action_dim
         self.actor = make_actor(observation_shape, action_dim)
         self.critic = make_critic(observation_shape, action_dim)
         self.target_critic = make_critic(observation_shape, action_dim)
@@ -51,7 +52,7 @@ class SACBCAgent(nn.Module):
         action = self.actor(observation).base_dist.base_dist.mode.tanh()
         return ptu.to_numpy(action[0])
 
-    @torch.compile
+    # @torch.compile  # Triton not available on Windows
     def update_q(
         self,
         observations: torch.Tensor,
@@ -64,8 +65,17 @@ class SACBCAgent(nn.Module):
         Update Q(s, a)
         """
         # TODO(student): Compute the Q loss
-        q = ...
-        loss = ...
+        batch_size = observations.shape[0]
+        q = self.critic(observations, actions)  # (2, B)
+        # assert q.shape == (2, batch_size), q.shape
+        next_action_dist: torch.distributions.Distribution = self.actor(next_observations)
+        next_actions = next_action_dist.rsample() # (B, ac_dim)
+        # assert next_actions.shape == (batch_size, self.action_dim), next_actions.shape
+        next_q = torch.mean(self.target_critic(next_observations, next_actions), dim=0) # (B, )
+        # assert rewards.shape == next_q.shape, next_q.shape
+        # target = rewards when done = 1
+        target = rewards + (1 - dones) * self.discount * next_q  # (B, )
+        loss = (q - target).square().mean()
 
         self.critic_optimizer.zero_grad()
         loss.backward()
@@ -78,7 +88,7 @@ class SACBCAgent(nn.Module):
             "q_min": q.min(),
         }
 
-    @torch.compile
+    # @torch.compile
     def update_actor(
         self,
         observations: torch.Tensor,
@@ -88,12 +98,16 @@ class SACBCAgent(nn.Module):
         Update the actor
         """
         # TODO(student): Compute the actor loss
-        q_loss = ...
+        policy_action_dist: torch.distributions.Distribution = self.actor(observations)
+        policy_actions = policy_action_dist.rsample()
+        q_loss = -torch.mean(self.critic(observations, policy_actions))
+        mses = (actions - policy_actions).square().mean()
+        bc_loss = mses * self.alpha
 
-        mses = ...
-        bc_loss = ...
+        
+        entropy_loss = self.beta() * policy_action_dist.log_prob(policy_actions).mean()
 
-        entropy_loss = ...
+        # assert q_loss.shape == bc_loss.shape and q_loss.shape == entropy_loss.shape
 
         loss = q_loss + bc_loss + entropy_loss
 
@@ -109,7 +123,7 @@ class SACBCAgent(nn.Module):
             "mse": mses.mean(),
         }
 
-    @torch.compile
+    # @torch.compile
     def update_beta(
         self,
         observations: torch.Tensor,
@@ -156,4 +170,9 @@ class SACBCAgent(nn.Module):
 
     def update_target_critic(self) -> None:
         # TODO(student): Update target_critic using Polyak averaging with self.target_update_rate
-        ...
+        for target_param, param in zip(
+            self.target_critic.parameters(), self.critic.parameters()
+        ):
+            target_param.data.copy_(
+                target_param.data * (1.0 - self.target_update_rate) + param.data * self.target_update_rate
+            )

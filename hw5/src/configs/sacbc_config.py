@@ -21,7 +21,7 @@ def sacbc_config(
     discount: float = 0.99,
     target_update_rate: float = 0.005,
     alpha: float = 1.0,
-    total_steps: int = 1000000,
+    total_steps: int = 1_000_000,
     batch_size: int = 256,
     **kwargs,
 ):

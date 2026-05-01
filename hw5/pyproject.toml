@@ -22,5 +22,13 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 package-dir = {"" = "src"}
 
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu126" }
+
 [tool.setuptools.packages.find]
 where = ["src"]
